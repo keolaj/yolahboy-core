@@ -270,6 +270,7 @@ float* get_buffer(Apu* apu) {
 
 void apu_step(Apu* apu, u8 cycles) {
 	if (apu->nr52 & 0b10000000) { // audio enabled
+		apu->buffer_full = false;
 		div_apu_step(apu, cycles);
 
 		channel_1_step(apu, cycles);

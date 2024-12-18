@@ -62,12 +62,54 @@ u8 cart_read8(Cartridge* cart, u16 address) {
 				return 0xFF;
 			}
 		}
+	case MBC3_TIMER_RAM_BATTERY:
+	case MBC3:
+		switch (address & 0xF000) {
+		case 0x0000:
+		case 0x1000:
+		case 0x2000:
+		case 0x3000:
+			return cart->rom[address];
+		case 0x4000:
+		case 0x5000:
+		case 0x6000:
+		case 0x7000:
+		{
+			u8 current_bank = cart->rom_bank;
+			u8 num_banks = (cart->rom_size / BANKSIZE);
+			current_bank |= (cart->ram_bank << 5);
+			current_bank &= (num_banks - 1);
 
+			int offset = current_bank * BANKSIZE;
+			u16 newaddr = address - 0x4000;
+			return cart->rom[offset + newaddr];
+		}
+		case 0xA000:
+		case 0xB000:
+			if (cart->ram_enabled && cart->ram != NULL) {
+				int newaddr = address - 0xA000;
+				if (cart->banking_mode == BANKMODEADVANCED) {
+					int num_banks = cart->ram_size / 0x2000;
+					int current_bank = cart->ram_bank & (num_banks - 1);
+					int offset = (current_bank * 0x2000);
+					newaddr += offset;
+					return cart->ram[newaddr];
+				}
+				else {
+					return cart->ram[newaddr];
+				}
+			}
+			else { // if ram disabled return 0xFF
+				return 0xFF;
+			}
+		}
 	}
+	
 	}
 }
 
 void cart_write8(Cartridge* cart, u16 address, u8 data) {
+
 	if (address <= 0x1FFF) { // ram enable register
 		cart->ram_enabled = (data & 0x0F) == 0xA;
 		return;
@@ -83,12 +125,17 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 			if (data == 0 || data == 0x20 || data == 0x40 || data == 0x60) data += 1;
 			cart->rom_bank = data;
 			return;
+		case MBC3_TIMER_RAM_BATTERY:
+		case MBC3:
+			data = data & 0x7f;
+			if (data == 0) data = 1;
+			cart->rom_bank = data;
+			return;
 		default:
 			return;
 		}
 	}
 	if (address >= 0x4000 && address <= 0x5FFF) { // ram bank number or upper bits of rom bank number
-		if (cart->type == ROM_ONLY) return;
 		switch (cart->type) {
 		case ROM_ONLY:
 			return;
@@ -98,12 +145,23 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 			cart->ram_bank = (data & 0b00000011);
 			return;
 		}
+		case MBC3_TIMER_RAM_BATTERY:
+		case MBC3: {
+			if (data <= 3) {
+				cart->rom_bank = data;
+				return;
+			}
+			if (data >= 0x08 && data <= 0x0c) {
+				cart->rom_bank = RTC_REGISTER;
+				return;
+			}
+		}
 		}
 	}
 	if (address >= 0x6000 && address <= 0x7FFF) { // bank mode select
 		if (cart->type == ROM_ONLY) return;
 		switch (cart->type) {
-		case MBC1: 
+		case MBC1:
 		case MBC1_RAM:
 		case MBC1_RAM_BATTERY: {
 			if ((data & 0b00000001) == 1) {
@@ -113,32 +171,31 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 				cart->banking_mode = BANKMODESIMPLE;
 			}
 			return;
+		}
+		}
+		if (address >= 0xA000 && address <= 0xBFFF) { // ram write
+			switch (cart->type) {
+			case ROM_ONLY:
+				return;
+			case MBC1:
+			case MBC1_RAM:
+			case MBC1_RAM_BATTERY: {
+				if (cart->ram_enabled && cart->ram != NULL) {
+					if (cart->banking_mode == BANKMODESIMPLE) {
+						int newaddr = address - 0xA000;
+						cart->ram[newaddr] = data;
+					}
+					else {
+						int num_banks = cart->ram_size / 0x2000;
+						int current_bank = cart->ram_bank & (num_banks - 1);
+						int offset = current_bank * 0x2000;
+						int newaddr = address - 0xA000;
+						cart->ram[offset + newaddr] = data;
+					}
+				}
 
-		}
-		}
-	}
-	if (address >= 0xA000 && address <= 0xBFFF) { // ram write
-		switch (cart->type) {
-		case ROM_ONLY:
-			return;
-		case MBC1:
-		case MBC1_RAM:
-		case MBC1_RAM_BATTERY: {
-			if (cart->ram_enabled && cart->ram != NULL) {
-				if (cart->banking_mode == BANKMODESIMPLE) {
-					int newaddr = address - 0xA000;
-					cart->ram[newaddr] = data;
-				}
-				else {
-					int num_banks = cart->ram_size / 0x2000;
-					int current_bank = cart->ram_bank & (num_banks - 1);
-					int offset = current_bank * 0x2000;
-					int newaddr = address - 0xA000;
-					cart->ram[offset + newaddr] = data;
-				}
 			}
-
-		}
+			}
 		}
 	}
 }

@@ -190,6 +190,9 @@ typedef struct _apu {
 #define MBC1_RAM 2
 #define MBC1_RAM_BATTERY 3
 #define MBC2 4
+#define MBC3_TIMER_RAM_BATTERY 0x10
+#define MBC3 0x11
+#define RTC_REGISTER 4
 
 typedef enum {
 	MODE256,

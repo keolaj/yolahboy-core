@@ -470,7 +470,7 @@ int load_save(Mmu* mem, const char* path) {
 void destroy_mmu(Mmu* mem) {
 	if (mem == NULL) return;
 
-	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
+	if (mem->cartridge.type == MBC1_RAM_BATTERY || mem->cartridge.type == 0x13) {
 		FILE* fp = fopen("game.sav", "wb");
 		if (fp == NULL) {
 		}

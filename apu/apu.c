@@ -10,7 +10,6 @@ static bool duty_cycles[4][16] = {
 
 
 void init_apu(Apu* apu, int sample_rate, int buffer_size) {
-
 	memset(apu, 0, sizeof(Apu)); // This resets all Apu registers and controls
 	
 	apu->buffer = (float*)malloc(sizeof(float) * buffer_size * 2); // Allocate main buffers

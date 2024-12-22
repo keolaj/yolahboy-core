@@ -223,8 +223,8 @@ typedef struct {
 	u8* rom;
 	u8* ram;
 	u8 type;
-	u8 rom_bank;
-	u8 ram_bank;
+	u16 rom_bank;
+	u16 ram_bank;
 	int rom_size;
 	int ram_size;
 	u8 num_rom_banks;

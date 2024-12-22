@@ -62,6 +62,7 @@ u8 cart_read8(Cartridge* cart, u16 address) {
 				return 0xFF;
 			}
 		}
+	case 0x13:
 	case MBC3_TIMER_RAM_BATTERY:
 	case MBC3:
 		switch (address & 0xF000) {
@@ -125,9 +126,9 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 			if (data == 0 || data == 0x20 || data == 0x40 || data == 0x60) data += 1;
 			cart->rom_bank = data;
 			return;
+		case 0x13:
 		case MBC3_TIMER_RAM_BATTERY:
 		case MBC3:
-			data = data & 0x7f;
 			if (data == 0) data = 1;
 			cart->rom_bank = data;
 			return;
@@ -145,6 +146,7 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 			cart->ram_bank = (data & 0b00000011);
 			return;
 		}
+		case 0x13:
 		case MBC3_TIMER_RAM_BATTERY:
 		case MBC3: {
 			if (data <= 3) {
@@ -194,6 +196,19 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 					}
 				}
 
+			}
+			case 0x13:
+			case MBC3:
+			case MBC3_TIMER_RAM_BATTERY: {
+				if (cart->ram_enabled && cart->ram != NULL) {
+					if (cart->ram_bank != RTC_REGISTER) {
+						int newaddr = address - 0xA000;
+						int num_banks = cart->ram_size / 0x2000;
+						int current_bank = cart->ram_bank & (num_banks - 1);
+						int offset = current_bank * 0x2000;
+						cart->ram[offset + newaddr] = data;
+					}
+				}
 			}
 			}
 		}
